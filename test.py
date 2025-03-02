@@ -17,6 +17,7 @@ device = torch.device("mps" if torch.cuda.is_available() else "cpu")
 
 model = MiniLLaDA(vocab_size=vocab_size, d_model=D_MODEL, nhead=NHEAD, num_layers=NUM_LAYERS, dim_feedforward=DIM_FEEDFORWARD, max_len=MAX_LEN).to(device)
 
+model.load_state_dict(torch.load("mini_llada.pth", map_location=device))
 
 def generate_text(prompt, response_length=64, num_steps=16, temperature=1.0):
     """
@@ -64,7 +65,10 @@ def generate_text(prompt, response_length=64, num_steps=16, temperature=1.0):
             response_logits = response_logits / temperature
 
         # greedy, take the token with the highest probability
-        r_prime = torch.argmax(response_logits, dim=-1)  # shape: (1, response_length)
+        # r_prime = torch.argmax(response_logits, dim=-1)  # shape: (1, response_length)
+
+        # Alternative: sample from the distribution
+        r_prime = torch.multinomial(torch.softmax(response_logits, dim=-1).squeeze(), num_samples=1).unsqueeze(0)
 
         # Construct new response
         old_response = full_seq[:, prompt_len:].clone()
@@ -94,4 +98,4 @@ def generate_text(prompt, response_length=64, num_steps=16, temperature=1.0):
 
 if __name__ == "__main__":
 
-    print(generate_text("User: Hey! <sep> Assistant: ", response_length=15, num_steps=3))
+    print(generate_text("User: Hey what's the weather like today? <sep> Assistant:", response_length=10, num_steps=1))
